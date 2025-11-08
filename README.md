@@ -28,12 +28,14 @@ A family recipe and story sharing website built with React and Express.
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <your-repo-url>
    cd NewWaitFamilySite
    ```
 
 2. **Set up the backend**
+
    ```bash
    cd server
    npm install
@@ -43,6 +45,7 @@ A family recipe and story sharing website built with React and Express.
    ```
 
 3. **Set up the frontend** (in a new terminal)
+
    ```bash
    cd client
    npm install
@@ -56,6 +59,7 @@ A family recipe and story sharing website built with React and Express.
 ## Environment Variables
 
 ### Server (`server/.env`)
+
 ```env
 PORT=5000
 NODE_ENV=development
@@ -66,6 +70,7 @@ SQLITE_DB_PATH=data/wait-family.db
 ```
 
 ### Client (`client/.env.production`)
+
 ```env
 VITE_API_BASE_URL=https://thewaitfamily.com
 ```
@@ -97,10 +102,12 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions to Goo
 ## Scripts
 
 ### Backend
+
 - `npm start` - Start the server
 - `npm run dev` - Start with nodemon (hot reload)
 
 ### Frontend
+
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
