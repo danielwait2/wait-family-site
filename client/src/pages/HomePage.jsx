@@ -38,12 +38,14 @@ export default function HomePage() {
     { 
       label: 'Family recipes documented', 
       value: stats.loading ? '...' : stats.recipeCount.toString(), 
-      copy: 'Seasonal staples, heirloom dishes, and new favorites.' 
+      copy: 'Seasonal staples, heirloom dishes, and new favorites.',
+      link: '/recipes'
     },
     { 
       label: 'Stories & videos shared', 
       value: stats.loading ? '...' : stats.storyCount.toString(), 
-      copy: 'Moments, videos, and letters captured for everyone.' 
+      copy: 'Moments, videos, and letters captured for everyone.',
+      link: '/family'
     },
   ];
 
@@ -69,11 +71,13 @@ export default function HomePage() {
 
       <div className="grid" style={{ marginTop: '2.5rem' }}>
         {displayStats.map((item) => (
-          <article key={item.label} className="stat-card">
-            <p className="pill muted">{item.label}</p>
-            <p className="stat-value">{item.value}</p>
-            <p className="muted">{item.copy}</p>
-          </article>
+          <Link key={item.label} to={item.link} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <article className="stat-card" style={{ cursor: 'pointer' }}>
+              <p className="pill muted">{item.label}</p>
+              <p className="stat-value">{item.value}</p>
+              <p className="muted">{item.copy}</p>
+            </article>
+          </Link>
         ))}
       </div>
     </section>
