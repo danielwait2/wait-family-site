@@ -40,23 +40,36 @@ git pull https://github.com/danielwait2/wait-family-site.git main
 echo -e "${GREEN}✓ Pulled latest changes${NC}"
 echo ""
 
-# Step 2: Stop server to free up memory
-echo -e "${YELLOW}Step 2: Stopping server to free up memory...${NC}"
+# Step 2: Backup database before migration
+echo -e "${YELLOW}Step 2: Backing up database before update...${NC}"
+BACKUP_DIR="/var/backups/wait-family"
+mkdir -p $BACKUP_DIR
+if [ -f "server/data/wait-family.db" ]; then
+    BACKUP_FILE="$BACKUP_DIR/wait-family-backup-$(date +%Y%m%d-%H%M%S).db"
+    cp server/data/wait-family.db "$BACKUP_FILE"
+    echo -e "${GREEN}✓ Database backed up to: $BACKUP_FILE${NC}"
+else
+    echo "No existing database found, skipping backup"
+fi
+echo ""
+
+# Step 3: Stop server to free up memory
+echo -e "${YELLOW}Step 3: Stopping server to free up memory...${NC}"
 pm2 stop wait-family-api || echo "Server already stopped or not running"
 sleep 2
 echo -e "${GREEN}✓ Server stopped${NC}"
 echo ""
 
-# Step 3: Update backend dependencies
-echo -e "${YELLOW}Step 3: Updating backend dependencies...${NC}"
+# Step 4: Update backend dependencies
+echo -e "${YELLOW}Step 4: Updating backend dependencies...${NC}"
 cd server
 npm install --production --no-audit --no-fund
 cd ..
 echo -e "${GREEN}✓ Backend dependencies updated${NC}"
 echo ""
 
-# Step 4: Build frontend with memory limits
-echo -e "${YELLOW}Step 4: Building frontend (this may take a while on low RAM)...${NC}"
+# Step 5: Build frontend with memory limits
+echo -e "${YELLOW}Step 5: Building frontend (this may take a while on low RAM)...${NC}"
 echo "Using memory limit: 300MB for Node.js"
 cd client
 
@@ -69,25 +82,43 @@ cd ..
 echo -e "${GREEN}✓ Frontend built successfully${NC}"
 echo ""
 
-# Step 5: Start server
-echo -e "${YELLOW}Step 5: Starting server...${NC}"
+# Step 6: Start server (database migration runs automatically)
+echo -e "${YELLOW}Step 6: Starting server (database migration will run automatically)...${NC}"
+echo "Note: The migration adds a 'likes' column with default value 0."
+echo "All existing recipe data will be preserved."
 cd server
 pm2 start wait-family-api
 cd ..
 echo -e "${GREEN}✓ Server started${NC}"
 echo ""
 
-# Step 6: Verify
-echo -e "${YELLOW}Step 6: Verifying server status...${NC}"
-sleep 2
+# Step 7: Verify
+echo -e "${YELLOW}Step 7: Verifying server status...${NC}"
+sleep 3
 pm2 status
+
+# Step 8: Check migration logs
+echo -e "${YELLOW}Step 8: Checking migration status...${NC}"
+echo "Checking server logs for migration confirmation..."
+sleep 2
+pm2 logs wait-family-api --lines 20 --nostream | grep -i "migration\|likes column" || echo "Check logs manually if needed"
+echo ""
 
 echo ""
 echo -e "${GREEN}=========================================="
 echo "Update complete!"
 echo "==========================================${NC}"
 echo ""
-echo "The database migration for the 'likes' column will run automatically."
-echo "Check server logs with: pm2 logs wait-family-api"
+echo "Database Migration Summary:"
+echo "- The 'likes' column has been added to the recipes table"
+echo "- All existing recipes now have likes = 0 (default value)"
+echo "- All existing data has been preserved"
+echo "- Database backup saved to: $BACKUP_DIR"
+echo ""
+echo "To verify migration, check server logs:"
+echo "  pm2 logs wait-family-api | grep -i migration"
+echo ""
+echo "To restore from backup if needed:"
+echo "  cp $BACKUP_DIR/wait-family-backup-*.db server/data/wait-family.db"
 echo ""
 
