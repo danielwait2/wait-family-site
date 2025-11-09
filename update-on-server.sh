@@ -75,11 +75,13 @@ echo ""
 # Step 5: Build frontend with memory limits
 echo -e "${YELLOW}Step 5: Building frontend (this may take a while on low RAM)...${NC}"
 echo "Using memory limit: 300MB for Node.js"
+echo "Note: Installing all dependencies (including dev) for build tools..."
 cd client
 
 # Set memory limit and build
+# Note: We need dev dependencies (like vite) for building, so we install everything
 export NODE_OPTIONS="--max-old-space-size=300"
-npm install --production --no-audit --no-fund
+npm install --no-audit --no-fund
 npm run build
 
 cd ..
