@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import crypto from "crypto";
 import cookieParser from "cookie-parser";
-import { all, run } from "./db.js";
+import { all, run, get } from "./db.js";
 
 dotenv.config();
 
@@ -101,6 +101,7 @@ const mapRecipe = (row) => ({
   prepTime: row.prep_time || null,
   cookTime: row.cook_time || null,
   serves: row.serves || null,
+  likes: row.likes || 0,
   status: row.status,
   createdAt: row.created_at,
 });
@@ -216,8 +217,8 @@ app.post("/api/admin/logout", requireAdmin, (req, res) => {
 
 app.get("/api/recipes", (req, res, next) => {
   try {
-    const { category, search } = req.query;
-    let query = `SELECT id, title, description, ingredients, steps, image_url, category, submitted_by, prep_time, cook_time, serves, status, created_at
+    const { category, search, maxTotalTime } = req.query;
+    let query = `SELECT id, title, description, ingredients, steps, image_url, category, submitted_by, prep_time, cook_time, serves, likes, status, created_at
                  FROM recipes
                  WHERE status = @status`;
     const params = { status: "approved" };
@@ -237,6 +238,16 @@ app.get("/api/recipes", (req, res, next) => {
         OR ingredients LIKE @search
       )`;
       params.search = searchTerm;
+    }
+
+    // Filter by total time (prep_time + cook_time)
+    if (maxTotalTime) {
+      const maxTime = parseInt(maxTotalTime, 10);
+      if (!isNaN(maxTime) && maxTime > 0) {
+        // Handle NULL values: COALESCE(prep_time, 0) + COALESCE(cook_time, 0) <= maxTime
+        query += ` AND (COALESCE(prep_time, 0) + COALESCE(cook_time, 0)) <= @maxTotalTime`;
+        params.maxTotalTime = maxTime;
+      }
     }
 
     query += " ORDER BY datetime(created_at) DESC";
@@ -326,6 +337,102 @@ app.post("/api/recipes", (req, res, next) => {
   }
 });
 
+// Like/unlike a recipe (public endpoint, no auth required)
+app.post("/api/recipes/:id/like", (req, res, next) => {
+  const recipeId = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(recipeId)) {
+    return res.status(400).json({ message: "Invalid recipe id" });
+  }
+
+  try {
+    // Check if recipe exists and is approved
+    const recipe = get(
+      `SELECT id, status, likes FROM recipes WHERE id = @id`,
+      { id: recipeId }
+    );
+
+    if (!recipe) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    if (recipe.status !== "approved") {
+      return res.status(403).json({ message: "Can only like approved recipes" });
+    }
+
+    // Increment likes
+    const result = run(
+      `UPDATE recipes SET likes = likes + 1 WHERE id = @id`,
+      { id: recipeId }
+    );
+
+    if (!result.changes) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    // Get updated likes count
+    const updated = get(
+      `SELECT likes FROM recipes WHERE id = @id`,
+      { id: recipeId }
+    );
+
+    res.json({ 
+      message: "Recipe liked", 
+      recipeId, 
+      likes: updated.likes 
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Unlike a recipe (public endpoint, no auth required)
+app.post("/api/recipes/:id/unlike", (req, res, next) => {
+  const recipeId = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(recipeId)) {
+    return res.status(400).json({ message: "Invalid recipe id" });
+  }
+
+  try {
+    // Check if recipe exists and is approved
+    const recipe = get(
+      `SELECT id, status, likes FROM recipes WHERE id = @id`,
+      { id: recipeId }
+    );
+
+    if (!recipe) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    if (recipe.status !== "approved") {
+      return res.status(403).json({ message: "Can only unlike approved recipes" });
+    }
+
+    // Decrement likes (ensure it doesn't go below 0)
+    const result = run(
+      `UPDATE recipes SET likes = MAX(likes - 1, 0) WHERE id = @id`,
+      { id: recipeId }
+    );
+
+    if (!result.changes) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    // Get updated likes count
+    const updated = get(
+      `SELECT likes FROM recipes WHERE id = @id`,
+      { id: recipeId }
+    );
+
+    res.json({ 
+      message: "Recipe unliked", 
+      recipeId, 
+      likes: updated.likes 
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/family", (_req, res, next) => {
   try {
     const rows = all(
@@ -353,7 +460,7 @@ app.get("/api/admin/recipes", requireAdmin, (req, res, next) => {
       params.status = status;
     }
     const rows = all(
-      `SELECT id, title, description, ingredients, steps, image_url, category, submitted_by, prep_time, cook_time, serves, status, created_at
+      `SELECT id, title, description, ingredients, steps, image_url, category, submitted_by, prep_time, cook_time, serves, likes, status, created_at
        FROM recipes
        ${filter}
        ORDER BY datetime(created_at) DESC`,

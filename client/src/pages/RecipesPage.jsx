@@ -16,6 +16,17 @@ const RECIPE_CATEGORIES = [
   { value: "other", label: "Other" },
 ];
 
+const TIME_FILTERS = [
+  { value: "", label: "Any Time" },
+  { value: "15", label: "15 minutes or less" },
+  { value: "30", label: "30 minutes or less" },
+  { value: "45", label: "45 minutes or less" },
+  { value: "60", label: "1 hour or less" },
+  { value: "90", label: "1.5 hours or less" },
+  { value: "120", label: "2 hours or less" },
+  { value: "180", label: "3 hours or less" },
+];
+
 const formatCategory = (category) => {
   return (
     RECIPE_CATEGORIES.find((cat) => cat.value === category)?.label ||
@@ -30,6 +41,7 @@ export default function RecipesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedMaxTime, setSelectedMaxTime] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
   // Debounce search query
@@ -41,12 +53,13 @@ export default function RecipesPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const loadRecipes = async (category = "", search = "") => {
+  const loadRecipes = async (category = "", search = "", maxTotalTime = "") => {
     try {
       setIsSearching(true);
       const params = new URLSearchParams();
       if (category) params.append("category", category);
       if (search.trim()) params.append("search", search.trim());
+      if (maxTotalTime) params.append("maxTotalTime", maxTotalTime);
 
       const queryString = params.toString();
       const url = `/api/recipes${queryString ? `?${queryString}` : ""}`;
@@ -61,9 +74,9 @@ export default function RecipesPage() {
   };
 
   useEffect(() => {
-    loadRecipes(selectedCategory, debouncedSearchQuery);
+    loadRecipes(selectedCategory, debouncedSearchQuery, selectedMaxTime);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, debouncedSearchQuery]);
+  }, [selectedCategory, debouncedSearchQuery, selectedMaxTime]);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -73,12 +86,17 @@ export default function RecipesPage() {
     setSelectedCategory(e.target.value);
   };
 
+  const handleMaxTimeChange = (e) => {
+    setSelectedMaxTime(e.target.value);
+  };
+
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedCategory("");
+    setSelectedMaxTime("");
   };
 
-  const hasActiveFilters = searchQuery.trim() || selectedCategory;
+  const hasActiveFilters = searchQuery.trim() || selectedCategory || selectedMaxTime;
 
   return (
     <section className="section-card">
@@ -117,6 +135,17 @@ export default function RecipesPage() {
               </option>
             ))}
           </select>
+          <select
+            value={selectedMaxTime}
+            onChange={handleMaxTimeChange}
+            className="category-filter"
+          >
+            {TIME_FILTERS.map((timeFilter) => (
+              <option key={timeFilter.value} value={timeFilter.value}>
+                {timeFilter.label}
+              </option>
+            ))}
+          </select>
           {hasActiveFilters && (
             <button
               type="button"
@@ -133,6 +162,11 @@ export default function RecipesPage() {
               {filteredRecipes.length}{" "}
               {filteredRecipes.length === 1 ? "recipe" : "recipes"} found
               {selectedCategory && ` in ${formatCategory(selectedCategory)}`}
+              {selectedMaxTime &&
+                ` with total time ${
+                  TIME_FILTERS.find((f) => f.value === selectedMaxTime)?.label
+                    .split(" or less")[0] || ""
+                }`}
               {debouncedSearchQuery.trim() &&
                 ` matching "${debouncedSearchQuery}"`}
             </p>
@@ -244,9 +278,17 @@ export default function RecipesPage() {
                       : recipe.description}
                   </p>
                   <div className="recipe-card-footer">
-                    <span className="muted" style={{ fontSize: "0.875rem" }}>
-                      {recipe.ingredients?.length || 0} ingredients
-                    </span>
+                    <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                      <span className="muted" style={{ fontSize: "0.875rem" }}>
+                        {recipe.ingredients?.length || 0} ingredients
+                      </span>
+                      {recipe.likes > 0 && (
+                        <span className="muted" style={{ fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <span>❤️</span>
+                          <span>{recipe.likes}</span>
+                        </span>
+                      )}
+                    </div>
                     <span className="recipe-card-arrow">→</span>
                   </div>
                 </div>

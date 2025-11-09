@@ -71,6 +71,15 @@ try {
     `);
     console.log('Migration complete: serves column added.');
   }
+
+  const hasLikes = tableInfo.some((col) => col.name === 'likes');
+  if (!hasLikes) {
+    console.log('Migrating: Adding likes column to recipes table...');
+    db.exec(`
+      ALTER TABLE recipes ADD COLUMN likes INTEGER NOT NULL DEFAULT 0;
+    `);
+    console.log('Migration complete: likes column added.');
+  }
 } catch (error) {
   console.error('Migration error:', error.message);
 }

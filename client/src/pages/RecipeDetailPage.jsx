@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { apiGet } from "../services/api.js";
+import { apiGet, apiPost } from "../services/api.js";
 
 const RECIPE_CATEGORIES = [
   { value: "breakfast", label: "Breakfast" },
@@ -28,6 +28,8 @@ export default function RecipeDetailPage() {
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [hasLiked, setHasLiked] = useState(false);
+  const [liking, setLiking] = useState(false);
 
   useEffect(() => {
     const loadRecipe = async () => {
@@ -37,6 +39,9 @@ export default function RecipeDetailPage() {
         const foundRecipe = recipes.find((r) => r.id === parseInt(id, 10));
         if (foundRecipe) {
           setRecipe(foundRecipe);
+          // Check if user has already liked this recipe
+          const likedRecipes = JSON.parse(localStorage.getItem("likedRecipes") || "[]");
+          setHasLiked(likedRecipes.includes(foundRecipe.id));
         } else {
           setError("Recipe not found");
         }
@@ -51,6 +56,47 @@ export default function RecipeDetailPage() {
       loadRecipe();
     }
   }, [id]);
+
+  const handleLike = async () => {
+    if (!recipe || liking) return;
+
+    try {
+      setLiking(true);
+      const isLiking = !hasLiked;
+      const endpoint = isLiking 
+        ? `/api/recipes/${recipe.id}/like`
+        : `/api/recipes/${recipe.id}/unlike`;
+      
+      const response = await apiPost(endpoint, {});
+      
+      // Update recipe likes count
+      setRecipe((prev) => ({
+        ...prev,
+        likes: response.likes,
+      }));
+
+      // Update localStorage
+      const likedRecipes = JSON.parse(localStorage.getItem("likedRecipes") || "[]");
+      if (isLiking) {
+        // Add to liked recipes
+        if (!likedRecipes.includes(recipe.id)) {
+          likedRecipes.push(recipe.id);
+          localStorage.setItem("likedRecipes", JSON.stringify(likedRecipes));
+        }
+        setHasLiked(true);
+      } else {
+        // Remove from liked recipes
+        const updated = likedRecipes.filter((id) => id !== recipe.id);
+        localStorage.setItem("likedRecipes", JSON.stringify(updated));
+        setHasLiked(false);
+      }
+    } catch (err) {
+      console.error("Error toggling like:", err);
+      // Don't show error to user, just log it
+    } finally {
+      setLiking(false);
+    }
+  };
 
   const buildShareUrl = () => {
     if (typeof window === "undefined" || !recipe) {
@@ -196,6 +242,110 @@ export default function RecipeDetailPage() {
         <p className="muted" style={{ fontSize: "1.125rem", lineHeight: "1.8", marginBottom: "2rem" }}>
           {recipe.description}
         </p>
+
+        {/* Like Button - data attributes prevent crawler interaction */}
+        <div 
+          style={{ 
+            marginBottom: "2rem", 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "1rem",
+            flexWrap: "wrap"
+          }}
+          data-noindex="true"
+          data-nocrawl="true"
+        >
+          <button
+            type="button"
+            onClick={handleLike}
+            disabled={liking}
+            data-noindex="true"
+            data-nocrawl="true"
+            aria-label={hasLiked ? "Remove like" : "I made this recipe"}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.5rem 1rem",
+              backgroundColor: hasLiked ? "var(--accent)" : "transparent",
+              color: hasLiked ? "white" : "var(--accent)",
+              border: "1px solid var(--accent)",
+              borderRadius: "var(--radius-md)",
+              cursor: liking ? "not-allowed" : "pointer",
+              fontSize: "0.9375rem",
+              fontWeight: 500,
+              transition: "all 0.2s ease",
+              opacity: liking ? 0.6 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!liking) {
+                if (hasLiked) {
+                  e.currentTarget.style.backgroundColor = "var(--error)";
+                  e.currentTarget.style.borderColor = "var(--error)";
+                } else {
+                  e.currentTarget.style.backgroundColor = "var(--accent-soft)";
+                }
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!liking) {
+                if (hasLiked) {
+                  e.currentTarget.style.backgroundColor = "var(--accent)";
+                  e.currentTarget.style.borderColor = "var(--accent)";
+                } else {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }
+              }
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "18px",
+                height: "18px",
+                marginRight: "4px",
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill={hasLiked ? "#000000" : "none"}
+                stroke="#000000"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                }}
+              >
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+            </span>
+            <span>
+              {hasLiked ? "I made this too" : "I made this!"}
+            </span>
+          </button>
+          {recipe.likes > 0 && (
+            <span 
+              className="muted" 
+              style={{ 
+                fontSize: "0.9375rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.25rem"
+              }}
+              data-noindex="true"
+              data-nocrawl="true"
+            >
+              <span>{recipe.likes}</span>
+              <span>{recipe.likes === 1 ? 'person has' : 'people have'} made this</span>
+            </span>
+          )}
+        </div>
 
         {recipe.imageUrl && (
           <img

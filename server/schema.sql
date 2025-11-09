@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS recipes (
   prep_time INTEGER,
   cook_time INTEGER,
   serves INTEGER,
+  likes INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
