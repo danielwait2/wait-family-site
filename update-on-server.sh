@@ -59,7 +59,7 @@ echo ""
 
 # Step 3: Stop server to free up memory
 echo -e "${YELLOW}Step 3: Stopping server to free up memory...${NC}"
-pm2 stop wait-family-api || echo "Server already stopped or not running"
+pm2 stop waitfamily-backend || echo "Server already stopped or not running"
 sleep 2
 echo -e "${GREEN}✓ Server stopped${NC}"
 echo ""
@@ -93,7 +93,7 @@ echo -e "${YELLOW}Step 6: Starting server (database migration will run automatic
 echo "Note: The migration adds a 'likes' column with default value 0."
 echo "All existing recipe data will be preserved."
 cd server
-pm2 start wait-family-api
+pm2 start waitfamily-backend || pm2 restart waitfamily-backend
 cd ..
 echo -e "${GREEN}✓ Server started${NC}"
 echo ""
@@ -107,7 +107,7 @@ pm2 status
 echo -e "${YELLOW}Step 8: Checking migration status...${NC}"
 echo "Checking server logs for migration confirmation..."
 sleep 2
-pm2 logs wait-family-api --lines 20 --nostream | grep -i "migration\|likes column" || echo "Check logs manually if needed"
+pm2 logs waitfamily-backend --lines 20 --nostream | grep -i "migration\|likes column" || echo "Check logs manually if needed"
 echo ""
 
 echo ""
@@ -122,7 +122,7 @@ echo "- All existing data has been preserved"
 echo "- Database backup saved to: server/data/backups/"
 echo ""
 echo "To verify migration, check server logs:"
-echo "  pm2 logs wait-family-api | grep -i migration"
+echo "  pm2 logs waitfamily-backend | grep -i migration"
 echo ""
 echo "To restore from backup if needed:"
 echo "  cp server/data/backups/wait-family-backup-*.db server/data/wait-family.db"
