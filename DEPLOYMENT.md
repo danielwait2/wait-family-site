@@ -33,8 +33,8 @@ sudo npm install -g pm2
 
 ```bash
 # Clone your repository
-git clone https://github.com/danielwait2/wait-family-site.git /var/www/wait-family
-cd /var/www/wait-family
+git clone https://github.com/danielwait2/wait-family-site.git /var/www/wait-family-site
+cd /var/www/wait-family-site
 
 # Build frontend
 cd client
@@ -50,7 +50,7 @@ cd ..
 
 ### 3. Configure Environment Variables
 
-Create `/var/www/wait-family/server/.env`:
+Create `/var/www/wait-family-site/server/.env`:
 
 ```env
 # Server Configuration
@@ -65,10 +65,10 @@ ADMIN_PASSWORD=your_secure_password
 CORS_ORIGINS=https://thewaitfamily.com,https://www.thewaitfamily.com
 
 # Database (optional, defaults to data/wait-family.db)
-SQLITE_DB_PATH=/var/www/wait-family/server/data/wait-family.db
+SQLITE_DB_PATH=/var/www/wait-family-site/server/data/wait-family.db
 ```
 
-Create `/var/www/wait-family/client/.env.production`:
+Create `/var/www/wait-family-site/client/.env.production`:
 
 ```env
 VITE_API_BASE_URL=https://thewaitfamily.com
@@ -83,14 +83,14 @@ npm run build
 ### 4. Create Database Directory
 
 ```bash
-mkdir -p /var/www/wait-family/server/data
-chmod 755 /var/www/wait-family/server/data
+mkdir -p /var/www/wait-family-site/server/data
+chmod 755 /var/www/wait-family-site/server/data
 ```
 
 ### 5. Start Backend with PM2
 
 ```bash
-cd /var/www/wait-family/server
+cd /var/www/wait-family-site/server
 pm2 start src/index.js --name wait-family-api
 pm2 save
 pm2 startup  # Follow instructions to enable auto-start on boot
@@ -142,7 +142,7 @@ server {
     gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
 
     # Root directory for static files (React build)
-    root /var/www/wait-family/client/dist;
+    root /var/www/wait-family-site/client/dist;
     index index.html;
 
     # API Proxy - Forward all /api requests to Express server
@@ -226,7 +226,7 @@ pm2 stop wait-family-api
 
 ## Database Backups
 
-SQLite database is located at `/var/www/wait-family/server/data/wait-family.db`.
+SQLite database is located at `/var/www/wait-family-site/server/data/wait-family.db`.
 
 Set up regular backups:
 
@@ -240,7 +240,7 @@ Add:
 #!/bin/bash
 BACKUP_DIR="/var/backups/wait-family"
 mkdir -p $BACKUP_DIR
-cp /var/www/wait-family/server/data/wait-family.db \
+cp /var/www/wait-family-site/server/data/wait-family.db \
    $BACKUP_DIR/wait-family-$(date +%Y%m%d-%H%M%S).db
 # Keep only last 30 days of backups
 find $BACKUP_DIR -name "wait-family-*.db" -mtime +30 -delete
@@ -289,7 +289,7 @@ curl https://thewaitfamily.com/api/health
 
 3. **Database Permissions**: Ensure the database file and directory are writable by the Node.js process:
    ```bash
-   sudo chown -R $USER:$USER /var/www/wait-family/server/data
+   sudo chown -R $USER:$USER /var/www/wait-family-site/server/data
    ```
 
 4. **Port Configuration**: The backend runs on port 5000 internally. Nginx proxies requests from port 443 to 5000.
@@ -299,7 +299,7 @@ curl https://thewaitfamily.com/api/health
 ## Updating the Application
 
 ```bash
-cd /var/www/wait-family
+cd /var/www/wait-family-site
 git pull
 cd client
 npm install

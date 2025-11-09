@@ -28,14 +28,14 @@ This minimizes server memory usage by building the frontend on your local machin
 3. **Upload built files to server:**
    ```bash
    # Replace 'your-user' and 'your-server' with your actual server details
-   scp -r client/dist/* your-user@your-server:/var/www/wait-family/client/dist/
+   scp -r client/dist/* your-user@your-server:/var/www/wait-family-site/client/dist/
    ```
 
 ### On Your Server (SSH):
 
 ```bash
 # 1. Navigate to project directory
-cd /var/www/wait-family
+cd /var/www/wait-family-site
 
 # 2. Pull backend changes only
 git pull https://github.com/danielwait2/wait-family-site.git main
@@ -60,7 +60,7 @@ If you need to build on the server, use strict memory limits:
 
 ```bash
 # 1. Pull changes
-cd /var/www/wait-family
+cd /var/www/wait-family-site
 git pull https://github.com/danielwait2/wait-family-site.git main
 
 # 2. Stop server to free RAM

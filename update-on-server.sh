@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 # Check if we're in the right directory
 if [ ! -d "server" ] || [ ! -d "client" ]; then
     echo -e "${RED}Error: Please run this script from the project root directory${NC}"
-    echo "Expected: /var/www/wait-family"
+    echo "Expected: /var/www/wait-family-site"
     exit 1
 fi
 
