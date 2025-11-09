@@ -23,8 +23,19 @@ if [ ! -d "server" ] || [ ! -d "client" ]; then
     exit 1
 fi
 
-# Step 1: Pull latest changes
-echo -e "${YELLOW}Step 1: Pulling latest changes from GitHub...${NC}"
+# Step 1: Handle local changes and pull latest changes
+echo -e "${YELLOW}Step 1: Handling local changes and pulling latest from GitHub...${NC}"
+
+# Reset temporary database files (they will be regenerated)
+git checkout -- server/data/wait-family.db-shm server/data/wait-family.db-wal 2>/dev/null || true
+
+# Stash any other local changes (we'll use the remote version)
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Stashing local changes..."
+    git stash push -m "Local changes before update $(date +%Y%m%d-%H%M%S)" || true
+fi
+
+# Pull latest changes
 git pull https://github.com/danielwait2/wait-family-site.git main
 echo -e "${GREEN}✓ Pulled latest changes${NC}"
 echo ""
