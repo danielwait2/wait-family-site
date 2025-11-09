@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 client/dist/
+client_build/
 
 # Environment variables
 .env

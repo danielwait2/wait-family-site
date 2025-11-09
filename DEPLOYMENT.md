@@ -298,6 +298,17 @@ curl https://thewaitfamily.com/api/health
 
 ## Updating the Application
 
+### Quick Update (using script)
+
+```bash
+cd /var/www/wait-family-site
+git pull
+chmod +x update-on-server.sh
+./update-on-server.sh
+```
+
+### Manual Update
+
 ```bash
 cd /var/www/wait-family-site
 git pull
@@ -306,8 +317,10 @@ npm install
 npm run build
 cd ../server
 npm install
-pm2 restart wait-family-api
+pm2 restart waitfamily-backend
 ```
+
+**Note for Low RAM Servers (0.5GB):** The update script automatically sets memory limits for the build process. If building manually, use: `NODE_OPTIONS="--max-old-space-size=300" npm run build`
 
 ## Monitoring
 
