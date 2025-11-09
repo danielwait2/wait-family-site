@@ -93,7 +93,13 @@ echo -e "${YELLOW}Step 6: Starting server (database migration will run automatic
 echo "Note: The migration adds a 'likes' column with default value 0."
 echo "All existing recipe data will be preserved."
 cd server
-pm2 start waitfamily-backend || pm2 restart waitfamily-backend
+# Check if process exists, if not start it, if yes restart it
+if pm2 describe waitfamily-backend > /dev/null 2>&1; then
+    pm2 restart waitfamily-backend
+else
+    # Start the server (assuming it uses npm start based on PM2 config)
+    pm2 start npm --name waitfamily-backend -- run start
+fi
 cd ..
 echo -e "${GREEN}✓ Server started${NC}"
 echo ""
