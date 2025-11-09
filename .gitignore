@@ -25,6 +25,11 @@ server/.env.production
 # data/
 # server/data/
 
+# Database backups (keep local backups out of git)
+server/data/backups/
+*.backup
+*.bak
+
 # Logs
 *.log
 npm-debug.log*

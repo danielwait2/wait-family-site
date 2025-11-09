@@ -42,12 +42,16 @@ echo ""
 
 # Step 2: Backup database before migration
 echo -e "${YELLOW}Step 2: Backing up database before update...${NC}"
-BACKUP_DIR="/var/backups/wait-family"
+# Use a backup directory within the project (user has write access)
+BACKUP_DIR="server/data/backups"
 mkdir -p $BACKUP_DIR
 if [ -f "server/data/wait-family.db" ]; then
     BACKUP_FILE="$BACKUP_DIR/wait-family-backup-$(date +%Y%m%d-%H%M%S).db"
     cp server/data/wait-family.db "$BACKUP_FILE"
     echo -e "${GREEN}✓ Database backed up to: $BACKUP_FILE${NC}"
+    # Keep only last 5 backups to save space
+    ls -t $BACKUP_DIR/wait-family-backup-*.db 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null || true
+    echo "  (Keeping last 5 backups)"
 else
     echo "No existing database found, skipping backup"
 fi
@@ -113,12 +117,12 @@ echo "Database Migration Summary:"
 echo "- The 'likes' column has been added to the recipes table"
 echo "- All existing recipes now have likes = 0 (default value)"
 echo "- All existing data has been preserved"
-echo "- Database backup saved to: $BACKUP_DIR"
+echo "- Database backup saved to: server/data/backups/"
 echo ""
 echo "To verify migration, check server logs:"
 echo "  pm2 logs wait-family-api | grep -i migration"
 echo ""
 echo "To restore from backup if needed:"
-echo "  cp $BACKUP_DIR/wait-family-backup-*.db server/data/wait-family.db"
+echo "  cp server/data/backups/wait-family-backup-*.db server/data/wait-family.db"
 echo ""
 
