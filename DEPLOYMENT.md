@@ -33,7 +33,7 @@ sudo npm install -g pm2
 
 ```bash
 # Clone your repository
-git clone <your-repo-url> /var/www/wait-family
+git clone https://github.com/danielwait2/wait-family-site.git /var/www/wait-family
 cd /var/www/wait-family
 
 # Build frontend

@@ -29,8 +29,8 @@ A family recipe and story sharing website built with React and Express.
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
-   cd NewWaitFamilySite
+   git clone https://github.com/danielwait2/wait-family-site.git
+   cd wait-family-site
    ```
 
 2. **Set up the backend**
