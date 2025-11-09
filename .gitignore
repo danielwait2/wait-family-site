@@ -18,11 +18,12 @@ client/.env.production
 server/.env.production
 
 # Database files
-*.db
-*.db-shm
-*.db-wal
-data/
-server/data/
+# Note: SQLite files are tracked for backup purposes
+# *.db
+# *.db-shm
+# *.db-wal
+# data/
+# server/data/
 
 # Logs
 *.log

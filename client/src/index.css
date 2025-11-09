@@ -71,6 +71,12 @@ header {
   transition: var(--transition);
 }
 
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
 header h1 {
   margin: 0;
   font-size: clamp(2rem, 3.5vw, 2.75rem);
@@ -945,6 +951,10 @@ footer {
 }
 
 @media (max-width: 600px) {
+  .header-brand {
+    gap: 1rem;
+  }
+
   .nav {
     flex-direction: row;
     gap: 0.375rem;

@@ -17,7 +17,9 @@ export default function App() {
   return (
     <div className="app-shell">
       <header>
-        <h1>The Wait Family</h1>
+        <div className="header-brand">
+          <h1>The Wait Family</h1>
+        </div>
         <nav className="nav">
           {navLinks.map((link) => (
             <NavLink key={link.path} to={link.path} className={({ isActive }) => (isActive ? 'active' : undefined)} end={link.path === '/'}>
