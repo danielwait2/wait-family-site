@@ -4,12 +4,14 @@ import RecipesPage from './pages/RecipesPage.jsx';
 import RecipeDetailPage from './pages/RecipeDetailPage.jsx';
 import AddRecipePage from './pages/AddRecipePage.jsx';
 import FamilyPage from './pages/FamilyPage.jsx';
+import BlogPage from './pages/BlogPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 
 const navLinks = [
   { path: '/', label: 'Home' },
   { path: '/recipes', label: 'Recipes' },
   { path: '/family', label: 'Learn About Us' },
+  { path: '/blog', label: 'Family Blog' },
   { path: '/admin', label: 'Admin' },
 ];
 
@@ -35,6 +37,7 @@ export default function App() {
           <Route path="/recipes/:id" element={<RecipeDetailPage />} />
           <Route path="/recipes/add" element={<AddRecipePage />} />
           <Route path="/family" element={<FamilyPage />} />
+          <Route path="/blog" element={<BlogPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </main>

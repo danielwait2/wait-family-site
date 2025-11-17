@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import crypto from "crypto";
 import cookieParser from "cookie-parser";
+import fetch from "node-fetch";
 import { all, run, get } from "./db.js";
 
 dotenv.config();
@@ -32,7 +33,169 @@ const RECIPE_CATEGORIES = [
   "appetizer",
   "other",
 ];
+const BLOG_FEED_URL =
+  process.env.BLOG_FEED_URL ||
+  "https://phxwaitroom.blogspot.com/feeds/posts/default?alt=json&max-results=200";
+const BLOG_CACHE_TTL = Number(process.env.BLOG_CACHE_TTL || 15 * 60 * 1000);
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 const activeTokens = new Map();
+let blogCache = { timestamp: 0, payload: null };
+
+const decodeHtmlEntities = (text = "") =>
+  text
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16))
+    )
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+
+const stripHtml = (html = "") =>
+  decodeHtmlEntities(
+    html
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+
+const extractFirstImage = (html = "") => {
+  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return match ? match[1] : null;
+};
+
+const normalizeBlogPost = (entry) => {
+  const contentHtml = entry?.content?.$t || entry?.summary?.$t || "";
+  const publishedAt = entry?.published?.$t || entry?.updated?.$t || null;
+  const updatedAt = entry?.updated?.$t || null;
+  const link =
+    entry?.link?.find((item) => item.rel === "alternate")?.href || null;
+  const thumbnail =
+    entry?.["media$thumbnail"]?.url || extractFirstImage(contentHtml);
+  const summarySource = entry?.summary?.$t || contentHtml;
+  const summary = stripHtml(summarySource).replace(/\s+/g, " ").trim();
+  const excerpt =
+    summary.length > 360 ? `${summary.slice(0, 360).trim()}…` : summary;
+  const labels = Array.isArray(entry?.category)
+    ? entry.category.map((item) => item.term).filter(Boolean)
+    : [];
+
+  let uniqueId = entry?.id?.$t || link;
+  if (!uniqueId) {
+    uniqueId =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : crypto.randomBytes(16).toString("hex");
+  }
+
+  const postDate = publishedAt ? new Date(publishedAt) : null;
+  const year = postDate?.getFullYear() || null;
+  const month = postDate ? postDate.getMonth() + 1 : null;
+
+  return {
+    id: uniqueId,
+    title: decodeHtmlEntities(entry?.title?.$t || "Untitled post"),
+    contentHtml,
+    summary: excerpt,
+    link: link || "https://phxwaitroom.blogspot.com/",
+    thumbnail,
+    publishedAt,
+    updatedAt,
+    author: entry?.author?.[0]?.name?.$t || "Regina",
+    labels,
+    year,
+    month,
+    monthLabel: month ? MONTH_NAMES[month - 1] : null,
+  };
+};
+
+const buildArchive = (posts) => {
+  const archiveMap = new Map();
+  posts.forEach((post) => {
+    if (!post.year || !post.month) {
+      return;
+    }
+    const yearBucket = archiveMap.get(post.year) || {
+      year: post.year,
+      total: 0,
+      months: new Map(),
+    };
+    yearBucket.total += 1;
+    const monthCount = yearBucket.months.get(post.month) || 0;
+    yearBucket.months.set(post.month, monthCount + 1);
+    archiveMap.set(post.year, yearBucket);
+  });
+
+  return Array.from(archiveMap.values())
+    .sort((a, b) => b.year - a.year)
+    .map((bucket) => ({
+      year: bucket.year,
+      total: bucket.total,
+      months: Array.from(bucket.months.entries())
+        .sort((a, b) => b[0] - a[0])
+        .map(([month, count]) => ({
+          month,
+          label: MONTH_NAMES[month - 1],
+          count,
+        })),
+    }));
+};
+
+const loadBlogFeed = async () => {
+  if (blogCache.payload && Date.now() - blogCache.timestamp < BLOG_CACHE_TTL) {
+    return blogCache.payload;
+  }
+
+  const response = await fetch(BLOG_FEED_URL);
+  if (!response.ok) {
+    throw new Error("Could not load the Wait Room blog feed");
+  }
+  const data = await response.json();
+  const entries = Array.isArray(data?.feed?.entry) ? data.feed.entry : [];
+  const posts = entries
+    .map((entry) => normalizeBlogPost(entry))
+    .filter((post) => Boolean(post.publishedAt))
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+    );
+
+  const payload = {
+    posts,
+    archive: buildArchive(posts),
+    source: {
+      title: data?.feed?.title?.$t || "The Wait Room",
+      link:
+        data?.feed?.link?.find((item) => item.rel === "alternate")?.href ||
+        "https://phxwaitroom.blogspot.com/",
+    },
+  };
+
+  blogCache = {
+    timestamp: Date.now(),
+    payload,
+  };
+
+  return payload;
+};
 
 app.use(
   cors({
@@ -346,39 +509,38 @@ app.post("/api/recipes/:id/like", (req, res, next) => {
 
   try {
     // Check if recipe exists and is approved
-    const recipe = get(
-      `SELECT id, status, likes FROM recipes WHERE id = @id`,
-      { id: recipeId }
-    );
+    const recipe = get(`SELECT id, status, likes FROM recipes WHERE id = @id`, {
+      id: recipeId,
+    });
 
     if (!recipe) {
       return res.status(404).json({ message: "Recipe not found" });
     }
 
     if (recipe.status !== "approved") {
-      return res.status(403).json({ message: "Can only like approved recipes" });
+      return res
+        .status(403)
+        .json({ message: "Can only like approved recipes" });
     }
 
     // Increment likes
-    const result = run(
-      `UPDATE recipes SET likes = likes + 1 WHERE id = @id`,
-      { id: recipeId }
-    );
+    const result = run(`UPDATE recipes SET likes = likes + 1 WHERE id = @id`, {
+      id: recipeId,
+    });
 
     if (!result.changes) {
       return res.status(404).json({ message: "Recipe not found" });
     }
 
     // Get updated likes count
-    const updated = get(
-      `SELECT likes FROM recipes WHERE id = @id`,
-      { id: recipeId }
-    );
+    const updated = get(`SELECT likes FROM recipes WHERE id = @id`, {
+      id: recipeId,
+    });
 
-    res.json({ 
-      message: "Recipe liked", 
-      recipeId, 
-      likes: updated.likes 
+    res.json({
+      message: "Recipe liked",
+      recipeId,
+      likes: updated.likes,
     });
   } catch (error) {
     next(error);
@@ -394,17 +556,18 @@ app.post("/api/recipes/:id/unlike", (req, res, next) => {
 
   try {
     // Check if recipe exists and is approved
-    const recipe = get(
-      `SELECT id, status, likes FROM recipes WHERE id = @id`,
-      { id: recipeId }
-    );
+    const recipe = get(`SELECT id, status, likes FROM recipes WHERE id = @id`, {
+      id: recipeId,
+    });
 
     if (!recipe) {
       return res.status(404).json({ message: "Recipe not found" });
     }
 
     if (recipe.status !== "approved") {
-      return res.status(403).json({ message: "Can only unlike approved recipes" });
+      return res
+        .status(403)
+        .json({ message: "Can only unlike approved recipes" });
     }
 
     // Decrement likes (ensure it doesn't go below 0)
@@ -418,15 +581,14 @@ app.post("/api/recipes/:id/unlike", (req, res, next) => {
     }
 
     // Get updated likes count
-    const updated = get(
-      `SELECT likes FROM recipes WHERE id = @id`,
-      { id: recipeId }
-    );
+    const updated = get(`SELECT likes FROM recipes WHERE id = @id`, {
+      id: recipeId,
+    });
 
-    res.json({ 
-      message: "Recipe unliked", 
-      recipeId, 
-      likes: updated.likes 
+    res.json({
+      message: "Recipe unliked",
+      recipeId,
+      likes: updated.likes,
     });
   } catch (error) {
     next(error);
@@ -442,6 +604,15 @@ app.get("/api/family", (_req, res, next) => {
        ORDER BY datetime(created_at) DESC`
     );
     res.json(rows.map(mapFamilyItem));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/blog/posts", async (_req, res, next) => {
+  try {
+    const payload = await loadBlogFeed();
+    res.json(payload);
   } catch (error) {
     next(error);
   }
