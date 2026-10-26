@@ -19,6 +19,10 @@ export const totalMinutes = (recipe) => (recipe.prepTime || 0) + (recipe.cookTim
 
 export const formatMinutes = (minutes) => {
   if (!minutes) return "";
+  if (minutes >= 24 * 60) {
+    const days = Math.round(minutes / (24 * 60));
+    return `${days} ${days === 1 ? "day" : "days"}`;
+  }
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (!hours) return `${mins} min`;
