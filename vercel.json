@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install && npm --prefix client install",
+  "installCommand": "npm install && npm --prefix client install --include=dev",
   "buildCommand": "npm --prefix client run build",
   "outputDirectory": "client/dist",
   "rewrites": [
