@@ -94,7 +94,7 @@ const extractFirstImage = (html = "") => {
 
 // Blogger thumbnails come back as 72px crops ("/s72-c/" or "=s72-c"); ask
 // for a width that stays sharp on phone screens instead.
-const BLOG_IMAGE_WIDTH = 800;
+const BLOG_IMAGE_WIDTH = 1200;
 const sharpenBlogImage = (url) => {
   if (!url || /\/img\/transparent\.gif$/.test(url)) return null;
   if (!/(blogger\.googleusercontent\.com|bp\.blogspot\.com|googleusercontent\.com)/.test(url)) return url;
