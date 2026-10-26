@@ -26,7 +26,7 @@ const emptyFamilyForm = {
 const checkAuthStatus = async () => {
   try {
     // Include credentials to send cookies
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:5001'}/api/admin/check-auth`, {
+    const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')}/api/admin/check-auth`, {
       method: 'GET',
       credentials: 'include',
       headers: {
