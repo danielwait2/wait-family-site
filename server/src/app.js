@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import crypto from "crypto";
 import cookieParser from "cookie-parser";
 import { all, run, get } from "./db.js";
+import { cleanIngredients, cleanSteps } from "./lib/cleanRecipeLines.js";
 
 dotenv.config();
 
@@ -255,7 +256,11 @@ const sanitizeArray = (value, label) => {
   if (!Array.isArray(value) || !value.length) {
     throw new Error(`${label} must be a non-empty array`);
   }
-  return value.map((item) => String(item).trim()).filter(Boolean);
+  const cleaned = (label === "Steps" ? cleanSteps : cleanIngredients)(value);
+  if (!cleaned.length) {
+    throw new Error(`${label} must be a non-empty array`);
+  }
+  return cleaned;
 };
 
 const parseJson = (value) => {
