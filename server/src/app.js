@@ -92,6 +92,17 @@ const extractFirstImage = (html = "") => {
   return match ? match[1] : null;
 };
 
+// Blogger thumbnails come back as 72px crops ("/s72-c/" or "=s72-c"); ask
+// for a width that stays sharp on phone screens instead.
+const BLOG_IMAGE_WIDTH = 800;
+const sharpenBlogImage = (url) => {
+  if (!url || /\/img\/transparent\.gif$/.test(url)) return null;
+  if (!/(blogger\.googleusercontent\.com|bp\.blogspot\.com|googleusercontent\.com)/.test(url)) return url;
+  return url
+    .replace(/\/(?:s\d+|w\d+(?:-h\d+)?)(?:-[a-z0-9-]+)?\/(?=[^/]+$)/i, `/w${BLOG_IMAGE_WIDTH}/`)
+    .replace(/=(?:s\d+|w\d+(?:-h\d+)?)(?:-[a-z0-9-]+)?$/i, `=w${BLOG_IMAGE_WIDTH}`);
+};
+
 const normalizeBlogPost = (entry) => {
   const contentHtml = entry?.content?.$t || entry?.summary?.$t || "";
   const publishedAt = entry?.published?.$t || entry?.updated?.$t || null;
@@ -99,7 +110,8 @@ const normalizeBlogPost = (entry) => {
   const link =
     entry?.link?.find((item) => item.rel === "alternate")?.href || null;
   const thumbnail =
-    entry?.["media$thumbnail"]?.url || extractFirstImage(contentHtml);
+    sharpenBlogImage(entry?.["media$thumbnail"]?.url) ||
+    sharpenBlogImage(extractFirstImage(contentHtml));
   const summarySource = entry?.summary?.$t || contentHtml;
   const summary = stripHtml(summarySource).replace(/\s+/g, " ").trim();
   const excerpt =
