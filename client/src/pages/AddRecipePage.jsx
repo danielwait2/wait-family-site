@@ -168,6 +168,7 @@ export default function AddRecipePage() {
                     name="prepTime"
                     type="number"
                     min="0"
+                    max="4320"
                     placeholder="e.g., 15"
                     value={form.prepTime}
                     onChange={handleChange}
@@ -180,6 +181,7 @@ export default function AddRecipePage() {
                     name="cookTime"
                     type="number"
                     min="0"
+                    max="4320"
                     placeholder="e.g., 30"
                     value={form.cookTime}
                     onChange={handleChange}

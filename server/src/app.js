@@ -29,6 +29,7 @@ const app = express();
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const RECIPE_STATUSES = ["pending", "approved", "rejected"];
+const MAX_RECIPE_MINUTES = 3 * 24 * 60;
 const RECIPE_CATEGORIES = [
   "breakfast",
   "lunch",
@@ -471,16 +472,16 @@ app.post("/api/recipes", async (req, res, next) => {
       return res.status(400).json({ message: "Invalid category" });
     }
 
-    if (prepTime !== null && (isNaN(prepTime) || prepTime < 0)) {
+    if (prepTime !== null && (isNaN(prepTime) || prepTime < 0 || prepTime > MAX_RECIPE_MINUTES)) {
       return res
         .status(400)
-        .json({ message: "Prep time must be a positive number" });
+        .json({ message: "Prep time must be between 0 and 3 days (4320 minutes)" });
     }
 
-    if (cookTime !== null && (isNaN(cookTime) || cookTime < 0)) {
+    if (cookTime !== null && (isNaN(cookTime) || cookTime < 0 || cookTime > MAX_RECIPE_MINUTES)) {
       return res
         .status(400)
-        .json({ message: "Cook time must be a positive number" });
+        .json({ message: "Cook time must be between 0 and 3 days (4320 minutes)" });
     }
 
     if (serves !== null && (isNaN(serves) || serves < 1)) {
@@ -680,10 +681,10 @@ app.patch("/api/admin/recipes/:id", requireAdmin, async (req, res, next) => {
       const prepTime = req.body.prepTime
         ? parseInt(req.body.prepTime, 10)
         : null;
-      if (prepTime !== null && (isNaN(prepTime) || prepTime < 0)) {
+      if (prepTime !== null && (isNaN(prepTime) || prepTime < 0 || prepTime > MAX_RECIPE_MINUTES)) {
         return res
           .status(400)
-          .json({ message: "Prep time must be a positive number" });
+          .json({ message: "Prep time must be between 0 and 3 days (4320 minutes)" });
       }
       updates.push("prep_time = @prep_time");
       params.prep_time = prepTime;
@@ -692,10 +693,10 @@ app.patch("/api/admin/recipes/:id", requireAdmin, async (req, res, next) => {
       const cookTime = req.body.cookTime
         ? parseInt(req.body.cookTime, 10)
         : null;
-      if (cookTime !== null && (isNaN(cookTime) || cookTime < 0)) {
+      if (cookTime !== null && (isNaN(cookTime) || cookTime < 0 || cookTime > MAX_RECIPE_MINUTES)) {
         return res
           .status(400)
-          .json({ message: "Cook time must be a positive number" });
+          .json({ message: "Cook time must be between 0 and 3 days (4320 minutes)" });
       }
       updates.push("cook_time = @cook_time");
       params.cook_time = cookTime;
