@@ -5,6 +5,15 @@ import crypto from "crypto";
 import cookieParser from "cookie-parser";
 import { all, run, get } from "./db.js";
 import { cleanIngredients, cleanSteps } from "./lib/cleanRecipeLines.js";
+import {
+  MADE_THIS_STATUSES,
+  deleteNote,
+  listApprovedNotes,
+  listNotesForAdmin,
+  recordMadeThis,
+  setNoteStatus,
+} from "./lib/madeThis.js";
+import { renderRecipeSharePage } from "./lib/sharePreview.js";
 
 dotenv.config();
 
@@ -513,96 +522,48 @@ app.post("/api/recipes", async (req, res, next) => {
   }
 });
 
-// Like/unlike a recipe (public endpoint, no auth required)
-app.post("/api/recipes/:id/like", async (req, res, next) => {
+app.get("/api/recipes/:id", async (req, res, next) => {
   const recipeId = Number.parseInt(req.params.id, 10);
   if (Number.isNaN(recipeId)) {
     return res.status(400).json({ message: "Invalid recipe id" });
   }
-
   try {
-    // Check if recipe exists and is approved
-    const recipe = await get(`SELECT id, status, likes FROM recipes WHERE id = @id`, {
-      id: recipeId,
-    });
-
-    if (!recipe) {
+    const row = await get(
+      `SELECT id, title, description, ingredients, steps, image_url, category, submitted_by, prep_time, cook_time, serves, likes, status, created_at
+       FROM recipes
+       WHERE id = @id AND status = 'approved'`,
+      { id: recipeId }
+    );
+    if (!row) {
       return res.status(404).json({ message: "Recipe not found" });
     }
-
-    if (recipe.status !== "approved") {
-      return res
-        .status(403)
-        .json({ message: "Can only like approved recipes" });
-    }
-
-    // Increment likes
-    const result = await run(`UPDATE recipes SET likes = likes + 1 WHERE id = @id`, {
-      id: recipeId,
-    });
-
-    if (!result.rowsAffected) {
-      return res.status(404).json({ message: "Recipe not found" });
-    }
-
-    // Get updated likes count
-    const updated = await get(`SELECT likes FROM recipes WHERE id = @id`, {
-      id: recipeId,
-    });
-
-    res.json({
-      message: "Recipe liked",
-      recipeId,
-      likes: updated.likes,
-    });
+    res.json({ ...mapRecipe(row), madeThis: await listApprovedNotes(recipeId) });
   } catch (error) {
     next(error);
   }
 });
 
-// Unlike a recipe (public endpoint, no auth required)
-app.post("/api/recipes/:id/unlike", async (req, res, next) => {
+app.post("/api/recipes/:id/made-this", async (req, res, next) => {
   const recipeId = Number.parseInt(req.params.id, 10);
   if (Number.isNaN(recipeId)) {
     return res.status(400).json({ message: "Invalid recipe id" });
   }
-
   try {
-    // Check if recipe exists and is approved
-    const recipe = await get(`SELECT id, status, likes FROM recipes WHERE id = @id`, {
-      id: recipeId,
-    });
-
-    if (!recipe) {
+    const result = await recordMadeThis(recipeId, req.body || {});
+    if (!result) {
       return res.status(404).json({ message: "Recipe not found" });
     }
+    res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
-    if (recipe.status !== "approved") {
-      return res
-        .status(403)
-        .json({ message: "Can only unlike approved recipes" });
-    }
-
-    // Decrement likes (ensure it doesn't go below 0)
-    const result = await run(
-      `UPDATE recipes SET likes = MAX(likes - 1, 0) WHERE id = @id`,
-      { id: recipeId }
-    );
-
-    if (!result.rowsAffected) {
-      return res.status(404).json({ message: "Recipe not found" });
-    }
-
-    // Get updated likes count
-    const updated = await get(`SELECT likes FROM recipes WHERE id = @id`, {
-      id: recipeId,
-    });
-
-    res.json({
-      message: "Recipe unliked",
-      recipeId,
-      likes: updated.likes,
-    });
+app.get("/recipes/:id", async (req, res, next) => {
+  try {
+    const html = await renderRecipeSharePage(req);
+    res.set("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=86400");
+    res.type("html").send(html);
   } catch (error) {
     next(error);
   }
@@ -785,6 +746,49 @@ app.delete("/api/admin/recipes/:id", requireAdmin, async (req, res, next) => {
       return res.status(404).json({ message: "Recipe not found" });
     }
     res.json({ message: "Recipe deleted", id: recipeId });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/admin/made-this", requireAdmin, async (req, res, next) => {
+  const { status } = req.query;
+  if (status && !MADE_THIS_STATUSES.includes(status)) {
+    return res.status(400).json({ message: "Invalid status" });
+  }
+  try {
+    res.json(await listNotesForAdmin(status));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/admin/made-this/:id", requireAdmin, async (req, res, next) => {
+  const id = Number.parseInt(req.params.id, 10);
+  const { status } = req.body || {};
+  if (Number.isNaN(id) || !MADE_THIS_STATUSES.includes(status)) {
+    return res.status(400).json({ message: "Invalid request" });
+  }
+  try {
+    if (!(await setNoteStatus(id, status))) {
+      return res.status(404).json({ message: "Note not found" });
+    }
+    res.json({ id, status });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/admin/made-this/:id", requireAdmin, async (req, res, next) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) {
+    return res.status(400).json({ message: "Invalid id" });
+  }
+  try {
+    if (!(await deleteNote(id))) {
+      return res.status(404).json({ message: "Note not found" });
+    }
+    res.json({ id });
   } catch (error) {
     next(error);
   }

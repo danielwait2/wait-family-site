@@ -29,3 +29,14 @@ CREATE TABLE IF NOT EXISTS family_items (
 CREATE INDEX IF NOT EXISTS recipes_status_idx ON recipes (status);
 CREATE INDEX IF NOT EXISTS recipes_category_idx ON recipes (category);
 CREATE INDEX IF NOT EXISTS family_items_published_idx ON family_items (is_published);
+
+CREATE TABLE IF NOT EXISTS made_this (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+  name TEXT,
+  note TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS made_this_recipe_idx ON made_this (recipe_id, status);
