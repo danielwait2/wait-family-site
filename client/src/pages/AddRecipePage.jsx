@@ -1,19 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import Icon from "../components/Icon.jsx";
+import usePageTitle from "../hooks/usePageTitle.js";
+import { RECIPE_CATEGORIES } from "../lib/recipes.js";
 import { apiPost } from "../services/api.js";
-
-const RECIPE_CATEGORIES = [
-  { value: "breakfast", label: "Breakfast" },
-  { value: "lunch", label: "Lunch" },
-  { value: "dinner", label: "Dinner" },
-  { value: "dessert", label: "Dessert" },
-  { value: "salad", label: "Salad" },
-  { value: "side", label: "Side Dish" },
-  { value: "snack", label: "Snack" },
-  { value: "beverage", label: "Beverage" },
-  { value: "appetizer", label: "Appetizer" },
-  { value: "other", label: "Other" },
-];
 
 const emptyForm = {
   title: "",
@@ -29,6 +19,7 @@ const emptyForm = {
 };
 
 export default function AddRecipePage() {
+  usePageTitle("Share a recipe");
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
   const [status, setStatus] = useState({ type: "", message: "" });
@@ -84,33 +75,32 @@ export default function AddRecipePage() {
   };
 
   return (
-    <section className="section-card">
-      <div className="hero">
+    <div className="page page-narrow">
+      <Link to="/recipes" className="back-link">
+        <Icon name="left" size={20} />
+        Recipes
+      </Link>
+      <div className="page-head">
         <div>
-          <p className="badge">Share your recipe</p>
-          <h2>Add something new to the Wait table</h2>
-          <p>
-            Share your favorite family recipe with everyone. Submissions remain
-            private until an admin reviews and approves them.
+          <h1>Share a recipe</h1>
+          <p className="page-sub">
+            Add a family favorite to the cookbook. An admin takes a quick look before it goes up.
           </p>
         </div>
       </div>
 
-      <div style={{ maxWidth: "700px", margin: "2.5rem auto 0" }}>
+      <div>
         {status.type === "success" ? (
-          <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
-            <p
-              className={`status-message ${status.type}`}
-              style={{ fontSize: "1.125rem", marginBottom: "2rem" }}
-            >
+          <div className="empty-state">
+            <p className={`status-message ${status.type}`}>
               {status.message}
             </p>
             <button
               type="button"
-              className="primary-btn"
+              className="btn btn-primary"
               onClick={handleAddAnother}
             >
-              Add a Recipe
+              Share another
             </button>
           </div>
         ) : (
@@ -122,7 +112,7 @@ export default function AddRecipePage() {
             ) : null}
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="submittedBy">Your Name</label>
+                <label htmlFor="submittedBy">Your name</label>
                 <input
                   id="submittedBy"
                   name="submittedBy"
@@ -130,15 +120,10 @@ export default function AddRecipePage() {
                   value={form.submittedBy}
                   onChange={handleChange}
                 />
-                <p
-                  className="muted"
-                  style={{ fontSize: "0.875rem", marginTop: "0.25rem" }}
-                >
-                  Optional - helps us know who shared this recipe
-                </p>
+                <p className="field-hint">So everyone knows whose kitchen it came from.</p>
               </div>
               <div className="form-group">
-                <label htmlFor="title">Recipe Title</label>
+                <label htmlFor="title">Recipe name</label>
                 <input
                   id="title"
                   name="title"
@@ -149,13 +134,11 @@ export default function AddRecipePage() {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="description">
-                  History of the recipe / Why you like it / How you found it
-                </label>
+                <label htmlFor="description">The story behind it</label>
                 <textarea
                   id="description"
                   name="description"
-                  placeholder="Share the story behind this recipe—where it came from, why you love it, or how you discovered it..."
+                  placeholder="Where it came from, why you love it, who made it first…"
                   value={form.description}
                   onChange={handleChange}
                   required
@@ -177,15 +160,9 @@ export default function AddRecipePage() {
                   ))}
                 </select>
               </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  gap: "1rem",
-                }}
-              >
+              <div className="form-row-3">
                 <div className="form-group">
-                  <label htmlFor="prepTime">Prep Time (minutes)</label>
+                  <label htmlFor="prepTime">Prep (min)</label>
                   <input
                     id="prepTime"
                     name="prepTime"
@@ -195,15 +172,9 @@ export default function AddRecipePage() {
                     value={form.prepTime}
                     onChange={handleChange}
                   />
-                  <p
-                    className="muted"
-                    style={{ fontSize: "0.875rem", marginTop: "0.25rem" }}
-                  >
-                    Optional
-                  </p>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="cookTime">Cook Time (minutes)</label>
+                  <label htmlFor="cookTime">Cook (min)</label>
                   <input
                     id="cookTime"
                     name="cookTime"
@@ -213,12 +184,6 @@ export default function AddRecipePage() {
                     value={form.cookTime}
                     onChange={handleChange}
                   />
-                  <p
-                    className="muted"
-                    style={{ fontSize: "0.875rem", marginTop: "0.25rem" }}
-                  >
-                    Optional
-                  </p>
                 </div>
                 <div className="form-group">
                   <label htmlFor="serves">Serves</label>
@@ -231,16 +196,11 @@ export default function AddRecipePage() {
                     value={form.serves}
                     onChange={handleChange}
                   />
-                  <p
-                    className="muted"
-                    style={{ fontSize: "0.875rem", marginTop: "0.25rem" }}
-                  >
-                    Optional
-                  </p>
                 </div>
               </div>
               <div className="form-group">
                 <label htmlFor="ingredients">Ingredients</label>
+                <p className="field-hint">One per line. Paste straight from a website and we&rsquo;ll tidy it up.</p>
                 <textarea
                   id="ingredients"
                   name="ingredients"
@@ -251,7 +211,8 @@ export default function AddRecipePage() {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="steps">Instructions</label>
+                <label htmlFor="steps">Steps</label>
+                <p className="field-hint">One step per line.</p>
                 <textarea
                   id="steps"
                   name="steps"
@@ -262,7 +223,7 @@ export default function AddRecipePage() {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="imageUrl">Image URL (Optional)</label>
+                <label htmlFor="imageUrl">Photo link (optional)</label>
                 <input
                   id="imageUrl"
                   name="imageUrl"
@@ -271,17 +232,17 @@ export default function AddRecipePage() {
                   onChange={handleChange}
                 />
               </div>
-              <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+              <div className="form-actions">
                 <button
                   type="submit"
                   disabled={loading}
-                  className={loading ? "loading" : ""}
+                  className="btn btn-primary btn-lg"
                 >
-                  Submit for approval
+                  {loading ? "Sending…" : "Submit recipe"}
                 </button>
                 <button
                   type="button"
-                  className="ghost-btn"
+                  className="btn btn-ghost btn-lg"
                   onClick={() => navigate("/recipes")}
                   disabled={loading}
                 >
@@ -292,6 +253,6 @@ export default function AddRecipePage() {
           </>
         )}
       </div>
-    </section>
+    </div>
   );
 }

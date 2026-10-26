@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import usePageTitle from '../hooks/usePageTitle.js';
 import { apiGet } from '../services/api.js';
 
 const monthNames = [
@@ -30,6 +31,7 @@ const formatDate = (dateInput) => {
 const defaultFilters = { year: '', month: '' };
 
 export default function BlogPage() {
+  usePageTitle('Blog');
   const [posts, setPosts] = useState([]);
   const [archive, setArchive] = useState([]);
   const [sourceLink, setSourceLink] = useState('https://phxwaitroom.blogspot.com/');
@@ -153,17 +155,12 @@ export default function BlogPage() {
   );
 
   return (
-    <section className="section-card blog-page">
+    <section className="section-card page blog-page">
       <div className="hero">
         <div>
-          <p className="badge">Family archive</p>
-          <h2>
-            Regina&rsquo;s blog chronicles our family since 2008. Browse every milestone without ever leaving this site.
-          </h2>
-          <p>
-            These posts are pulled straight from <em>The Wait Room</em>, so you can explore by year, relive monthly updates,
-            and jump out to the original blog whenever you want screenshots, comments, or the full context.
-          </p>
+          <p className="eyebrow">Family archive</p>
+          <h2>The Wait Room</h2>
+          <p>Regina&rsquo;s blog about our family since 2008. Pick a year, then tap through to read the full post.</p>
           <div className="hero-cta">
             <a className="primary-btn" href={sourceLink} target="_blank" rel="noreferrer">
               Visit the full blog ↗

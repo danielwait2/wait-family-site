@@ -1,326 +1,143 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { apiGet } from "../services/api.js";
-
-const RECIPE_CATEGORIES = [
-  { value: "", label: "All Categories" },
-  { value: "breakfast", label: "Breakfast" },
-  { value: "lunch", label: "Lunch" },
-  { value: "dinner", label: "Dinner" },
-  { value: "dessert", label: "Dessert" },
-  { value: "salad", label: "Salad" },
-  { value: "side", label: "Side Dish" },
-  { value: "snack", label: "Snack" },
-  { value: "beverage", label: "Beverage" },
-  { value: "appetizer", label: "Appetizer" },
-  { value: "other", label: "Other" },
-];
+import { useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import RecipeCard from "../components/RecipeCard.jsx";
+import Icon from "../components/Icon.jsx";
+import useRecipes from "../hooks/useRecipes.js";
+import usePageTitle from "../hooks/usePageTitle.js";
+import { RECIPE_CATEGORIES, matchesSearch, totalMinutes } from "../lib/recipes.js";
 
 const TIME_FILTERS = [
-  { value: "", label: "Any Time" },
-  { value: "15", label: "15 minutes or less" },
-  { value: "30", label: "30 minutes or less" },
-  { value: "45", label: "45 minutes or less" },
+  { value: "30", label: "30 min or less" },
   { value: "60", label: "1 hour or less" },
-  { value: "90", label: "1.5 hours or less" },
-  { value: "120", label: "2 hours or less" },
-  { value: "180", label: "3 hours or less" },
 ];
 
-const formatCategory = (category) => {
-  return (
-    RECIPE_CATEGORIES.find((cat) => cat.value === category)?.label ||
-    category.charAt(0).toUpperCase() + category.slice(1)
-  );
-};
-
 export default function RecipesPage() {
-  const navigate = useNavigate();
-  const [recipes, setRecipes] = useState([]);
-  const [filteredRecipes, setFilteredRecipes] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedMaxTime, setSelectedMaxTime] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  usePageTitle("Recipes");
+  const { recipes, loading, error } = useRecipes();
+  const [params, setParams] = useSearchParams();
+  const query = params.get("q") || "";
+  const category = params.get("category") || "";
+  const maxTime = params.get("time") || "";
 
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const loadRecipes = async (category = "", search = "", maxTotalTime = "") => {
-    try {
-      setIsSearching(true);
-      const params = new URLSearchParams();
-      if (category) params.append("category", category);
-      if (search.trim()) params.append("search", search.trim());
-      if (maxTotalTime) params.append("maxTotalTime", maxTotalTime);
-
-      const queryString = params.toString();
-      const url = `/api/recipes${queryString ? `?${queryString}` : ""}`;
-      const data = await apiGet(url);
-      setRecipes(data);
-      setFilteredRecipes(data);
-    } catch (error) {
-      console.error("Error loading recipes:", error);
-    } finally {
-      setIsSearching(false);
-    }
+  const updateParam = (key, value) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setParams(next, { replace: true });
   };
 
-  useEffect(() => {
-    loadRecipes(selectedCategory, debouncedSearchQuery, selectedMaxTime);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, debouncedSearchQuery, selectedMaxTime]);
+  const categoryCounts = useMemo(
+    () =>
+      recipes.reduce((counts, recipe) => {
+        counts[recipe.category] = (counts[recipe.category] || 0) + 1;
+        return counts;
+      }, {}),
+    [recipes]
+  );
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
+  const visible = useMemo(
+    () =>
+      recipes.filter(
+        (recipe) =>
+          (!category || recipe.category === category) &&
+          (!maxTime || (totalMinutes(recipe) > 0 && totalMinutes(recipe) <= Number(maxTime))) &&
+          matchesSearch(recipe, query)
+      ),
+    [recipes, category, maxTime, query]
+  );
 
-  const handleCategoryChange = (e) => {
-    setSelectedCategory(e.target.value);
-  };
-
-  const handleMaxTimeChange = (e) => {
-    setSelectedMaxTime(e.target.value);
-  };
-
-  const clearFilters = () => {
-    setSearchQuery("");
-    setSelectedCategory("");
-    setSelectedMaxTime("");
-  };
-
-  const hasActiveFilters = searchQuery.trim() || selectedCategory || selectedMaxTime;
+  const hasFilters = Boolean(query || category || maxTime);
 
   return (
-    <section className="section-card">
-      <div className="hero">
+    <div className="page">
+      <div className="page-head">
         <div>
-          <p className="badge">Our shared cookbook</p>
-          <h2>Approved recipes to bring back that Wait family feeling.</h2>
-          <p>
-            Every dish here was submitted by family and lovingly approved so the
-            memories, aromas, and flavors live on.
-          </p>
+          <h1>Recipes</h1>
+          <p className="page-sub">Our shared family cookbook</p>
         </div>
+        <Link to="/recipes/add" className="btn btn-soft">
+          <Icon name="plus" size={18} />
+          Add
+        </Link>
       </div>
 
-      {/* Search and Filter Section */}
-      <div className="search-filter-section">
-        <div className="search-container">
+      <div className="filter-bar">
+        <label className="search-field">
+          <Icon name="search" size={20} />
+          <span className="visually-hidden">Search recipes</span>
           <input
-            type="text"
-            placeholder="Search recipes by name, ingredients, or description..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="search-input"
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            placeholder="Search by name, ingredient, or cook"
+            value={query}
+            onChange={(event) => updateParam("q", event.target.value)}
           />
-          {isSearching && <div className="search-loading"></div>}
-        </div>
-        <div className="filter-container">
-          <select
-            value={selectedCategory}
-            onChange={handleCategoryChange}
-            className="category-filter"
-          >
-            {RECIPE_CATEGORIES.map((category) => (
-              <option key={category.value} value={category.value}>
-                {category.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedMaxTime}
-            onChange={handleMaxTimeChange}
-            className="category-filter"
-          >
-            {TIME_FILTERS.map((timeFilter) => (
-              <option key={timeFilter.value} value={timeFilter.value}>
-                {timeFilter.label}
-              </option>
-            ))}
-          </select>
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="clear-filters-btn"
-            >
-              Clear Filters
+          {query ? (
+            <button type="button" className="icon-btn" onClick={() => updateParam("q", "")} aria-label="Clear search">
+              <Icon name="x" size={18} />
             </button>
-          )}
+          ) : null}
+        </label>
+
+        <div className="chip-row" role="group" aria-label="Filter by category">
+          <button type="button" className={`chip${!category ? " active" : ""}`} onClick={() => updateParam("category", "")}>
+            All
+          </button>
+          {RECIPE_CATEGORIES.filter((cat) => categoryCounts[cat.value]).map((cat) => (
+            <button
+              key={cat.value}
+              type="button"
+              className={`chip${category === cat.value ? " active" : ""}`}
+              aria-pressed={category === cat.value}
+              onClick={() => updateParam("category", category === cat.value ? "" : cat.value)}
+            >
+              {cat.label}
+              <span className="chip-count">{categoryCounts[cat.value]}</span>
+            </button>
+          ))}
+          {TIME_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className={`chip chip-time${maxTime === filter.value ? " active" : ""}`}
+              aria-pressed={maxTime === filter.value}
+              onClick={() => updateParam("time", maxTime === filter.value ? "" : filter.value)}
+            >
+              <Icon name="clock" size={15} />
+              {filter.label}
+            </button>
+          ))}
         </div>
-        {hasActiveFilters && (
-          <div className="filter-results">
-            <p className="muted">
-              {filteredRecipes.length}{" "}
-              {filteredRecipes.length === 1 ? "recipe" : "recipes"} found
-              {selectedCategory && ` in ${formatCategory(selectedCategory)}`}
-              {selectedMaxTime &&
-                ` with total time ${
-                  TIME_FILTERS.find((f) => f.value === selectedMaxTime)?.label
-                    .split(" or less")[0] || ""
-                }`}
-              {debouncedSearchQuery.trim() &&
-                ` matching "${debouncedSearchQuery}"`}
-            </p>
-          </div>
-        )}
       </div>
 
-      <div className="recipes-container">
-        <div className="recipes-header">
-          <div>
-            <h3 style={{ margin: 0, marginBottom: "0.5rem" }}>
-              {filteredRecipes.length}{" "}
-              {filteredRecipes.length === 1 ? "Recipe" : "Recipes"}
-            </h3>
-            <p className="muted" style={{ margin: 0 }}>
-              {hasActiveFilters
-                ? "Filtered results"
-                : "All approved family recipes"}
-            </p>
-          </div>
-          <Link to="/recipes/add" className="primary-btn">
-            Add a Recipe
+      {error ? <p className="status-message error">{error}</p> : null}
+
+      {!loading ? (
+        <p className="result-count" aria-live="polite">
+          {visible.length} {visible.length === 1 ? "recipe" : "recipes"}
+          {hasFilters ? (
+            <button type="button" className="link-btn" onClick={() => setParams({}, { replace: true })}>
+              Clear filters
+            </button>
+          ) : null}
+        </p>
+      ) : null}
+
+      <div className="recipe-grid">
+        {loading
+          ? Array.from({ length: 6 }, (_, index) => <div key={index} className="recipe-card skeleton" />)
+          : visible.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
+      </div>
+
+      {!loading && !visible.length ? (
+        <div className="empty-state">
+          <p>{hasFilters ? "Nothing matches that yet. Try a different word or clear the filters." : "No recipes yet."}</p>
+          <Link to="/recipes/add" className="btn btn-primary">
+            Share a recipe
           </Link>
         </div>
-
-        <div className="recipes-grid" style={{ marginTop: "2rem" }}>
-          {filteredRecipes.length ? (
-            filteredRecipes.map((recipe) => (
-              <article
-                key={recipe.id}
-                className="recipe-card-preview"
-                onClick={() => navigate(`/recipes/${recipe.id}`)}
-              >
-                {recipe.imageUrl ? (
-                  <div className="recipe-card-image">
-                    <img src={recipe.imageUrl} alt={recipe.title} />
-                  </div>
-                ) : (
-                  <div className="recipe-card-image-placeholder">
-                    <span>🍳</span>
-                  </div>
-                )}
-                <div className="recipe-card-content">
-                  <div
-                    className="pill category-pill"
-                    style={{
-                      backgroundColor: "var(--accent-soft)",
-                      color: "var(--accent)",
-                      borderColor: "var(--accent)",
-                      marginBottom: "0.75rem",
-                      display: "inline-block",
-                    }}
-                  >
-                    {formatCategory(recipe.category || "dinner")}
-                  </div>
-                  <h3 style={{ margin: "0.5rem 0", fontSize: "1.5rem" }}>
-                    {recipe.title}
-                  </h3>
-                  {recipe.submittedBy && (
-                    <p
-                      className="muted"
-                      style={{
-                        fontSize: "0.875rem",
-                        fontStyle: "italic",
-                        marginTop: "0.25rem",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
-                      Shared by {recipe.submittedBy}
-                    </p>
-                  )}
-                  {(recipe.prepTime || recipe.cookTime || recipe.serves) && (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "1rem",
-                        marginBottom: "0.75rem",
-                        fontSize: "0.875rem",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      {recipe.prepTime && (
-                        <span className="muted">
-                          Prep: <strong>{recipe.prepTime} min</strong>
-                        </span>
-                      )}
-                      {recipe.cookTime && (
-                        <span className="muted">
-                          Cook: <strong>{recipe.cookTime} min</strong>
-                        </span>
-                      )}
-                      {recipe.serves && (
-                        <span className="muted">
-                          Serves: <strong>{recipe.serves}</strong>
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  <p
-                    className="muted"
-                    style={{
-                      fontSize: "0.9375rem",
-                      lineHeight: "1.6",
-                      marginBottom: "1rem",
-                    }}
-                  >
-                    {recipe.description.length > 120
-                      ? `${recipe.description.substring(0, 120)}...`
-                      : recipe.description}
-                  </p>
-                  <div className="recipe-card-footer">
-                    <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                      <span className="muted" style={{ fontSize: "0.875rem" }}>
-                        {recipe.ingredients?.length || 0} ingredients
-                      </span>
-                      {recipe.likes > 0 && (
-                        <span className="muted" style={{ fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                          <span>❤️</span>
-                          <span>{recipe.likes}</span>
-                        </span>
-                      )}
-                    </div>
-                    <span className="recipe-card-arrow">→</span>
-                  </div>
-                </div>
-              </article>
-            ))
-          ) : (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "4rem 1rem",
-                background: "var(--surface-muted)",
-                borderRadius: "var(--radius-lg)",
-                border: "1px solid var(--line)",
-              }}
-            >
-              <p
-                className="muted"
-                style={{ fontSize: "1.0625rem", marginBottom: "1.5rem" }}
-              >
-                {hasActiveFilters
-                  ? "No recipes found matching your search. Try adjusting your filters."
-                  : "No recipes published yet—be the first to submit one!"}
-              </p>
-              {!hasActiveFilters && (
-                <Link to="/recipes/add" className="primary-btn">
-                  Add the First Recipe
-                </Link>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
+      ) : null}
+    </div>
   );
 }

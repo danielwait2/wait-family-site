@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import Icon from '../components/Icon.jsx';
+import usePageTitle from '../hooks/usePageTitle.js';
 import { apiGet } from '../services/api.js';
 
 export default function FamilyPage() {
-  const [entries, setEntries] = useState([]);
+  usePageTitle('Stories');
+  const [entries, setEntries] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -12,49 +15,47 @@ export default function FamilyPage() {
   }, []);
 
   return (
-    <section className="section-card">
-      <div className="hero">
+    <div className="page">
+      <div className="page-head">
         <div>
-          <p className="badge">Stories &amp; media</p>
-          <h2>The Wait family timeline, in videos, articles, and little moments.</h2>
-          <p>
-            Admins curate highlights so everyone stays close to the memories—whether it is a grainy home video from the
-            lakehouse or a new article about a milestone.
-          </p>
+          <h1>Family stories</h1>
+          <p className="page-sub">Videos, articles, and little moments worth keeping.</p>
         </div>
       </div>
 
       {error ? <p className="status-message error">{error}</p> : null}
 
-      {entries.length ? (
-        <div className="grid" style={{ marginTop: '2rem' }}>
+      {entries === null && !error ? (
+        <div className="story-list">
+          <div className="story-card skeleton" />
+          <div className="story-card skeleton" />
+        </div>
+      ) : null}
+
+      {entries?.length ? (
+        <div className="story-list">
           {entries.map((entry) => (
-            <article key={entry.id} className="family-card">
-              <p className="pill">{entry.mediaType === 'video' ? 'Video drop' : 'Story spotlight'}</p>
-              <h3>{entry.title}</h3>
-              <p className="muted">{entry.summary}</p>
-              {entry.content ? <p style={{ marginTop: '0.75rem' }}>{entry.content}</p> : null}
+            <article key={entry.id} className="story-card">
+              <p className="eyebrow">{entry.mediaType === 'video' ? 'Video' : 'Story'}</p>
+              <h2>{entry.title}</h2>
+              <p className="story-summary">{entry.summary}</p>
+              {entry.content ? <p className="story-content">{entry.content}</p> : null}
               {entry.mediaUrl ? (
-                <a
-                  className="ghost-btn"
-                  style={{ marginTop: '1rem', display: 'inline-flex' }}
-                  href={entry.mediaUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {entry.mediaType === 'video' ? 'Watch video ↗' : 'Read article ↗'}
+                <a className="btn btn-soft" href={entry.mediaUrl} target="_blank" rel="noreferrer">
+                  {entry.mediaType === 'video' ? 'Watch the video' : 'Read the article'}
+                  <Icon name="right" size={18} />
                 </a>
               ) : null}
             </article>
           ))}
         </div>
-      ) : (
-        <div style={{ marginTop: '2rem', textAlign: 'center', padding: '3rem 1rem' }}>
-          <p className="muted" style={{ fontSize: '1.0625rem' }}>
-            No stories yet. Admins can add them from the dashboard.
-          </p>
+      ) : null}
+
+      {entries && !entries.length ? (
+        <div className="empty-state">
+          <p>No stories yet. Check back soon.</p>
         </div>
-      )}
-    </section>
+      ) : null}
+    </div>
   );
 }

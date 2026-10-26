@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPatch, apiPost, apiDelete } from '../services/api.js';
+import MadeThisModeration from '../components/MadeThisModeration.jsx';
+import usePageTitle from '../hooks/usePageTitle.js';
 
 const RECIPE_CATEGORIES = [
   { value: 'breakfast', label: 'Breakfast' },
@@ -44,6 +46,7 @@ const checkAuthStatus = async () => {
 };
 
 export default function AdminPage() {
+  usePageTitle('Admin');
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -265,7 +268,7 @@ export default function AdminPage() {
   };
 
   return (
-    <section className="section-card">
+    <section className="section-card page">
       <div className="hero">
         <div>
           <p className="badge">Admin tools</p>
@@ -544,6 +547,8 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+
+            <MadeThisModeration />
 
             <div className="split-grid" style={{ marginTop: '2rem' }}>
               <div className="stack">

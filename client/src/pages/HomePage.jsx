@@ -1,85 +1,127 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { apiGet } from '../services/api.js';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import RecipeCard from '../components/RecipeCard.jsx';
+import Icon from '../components/Icon.jsx';
+import InstallTip from '../components/InstallTip.jsx';
+import useRecipes from '../hooks/useRecipes.js';
+import usePageTitle from '../hooks/usePageTitle.js';
+import { RECIPE_CATEGORIES } from '../lib/recipes.js';
+
+const greeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 11) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
 
 export default function HomePage() {
-  const [stats, setStats] = useState({
-    recipeCount: 0,
-    storyCount: 0,
-    loading: true,
-  });
+  usePageTitle('');
+  const navigate = useNavigate();
+  const { recipes, loading } = useRecipes();
+  const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const [recipes, stories] = await Promise.all([
-          apiGet('/api/recipes'),
-          apiGet('/api/family'),
-        ]);
-        setStats({
-          recipeCount: recipes.length || 0,
-          storyCount: stories.length || 0,
-          loading: false,
-        });
-      } catch (error) {
-        console.error('Error loading stats:', error);
-        setStats({
-          recipeCount: 0,
-          storyCount: 0,
-          loading: false,
-        });
-      }
-    };
+  const recent = recipes.slice(0, 8);
+  const favorites = useMemo(
+    () => [...recipes].filter((recipe) => recipe.likes > 0).sort((a, b) => b.likes - a.likes).slice(0, 8),
+    [recipes]
+  );
+  const categories = RECIPE_CATEGORIES.filter((cat) => recipes.some((recipe) => recipe.category === cat.value));
 
-    loadStats();
-  }, []);
+  const surpriseMe = () => {
+    if (!recipes.length) return;
+    navigate(`/recipes/${recipes[Math.floor(Math.random() * recipes.length)].id}`);
+  };
 
-  const displayStats = [
-    { 
-      label: 'Family recipes documented', 
-      value: stats.loading ? '...' : stats.recipeCount.toString(), 
-      copy: 'Seasonal staples, heirloom dishes, and new favorites.',
-      link: '/recipes'
-    },
-    { 
-      label: 'Stories & videos shared', 
-      value: stats.loading ? '...' : stats.storyCount.toString(), 
-      copy: 'Moments, videos, and letters captured for everyone.',
-      link: '/family'
-    },
-  ];
+  const submitSearch = (event) => {
+    event.preventDefault();
+    navigate(query.trim() ? `/recipes?q=${encodeURIComponent(query.trim())}` : '/recipes');
+  };
 
   return (
-    <section className="section-card">
-      <div className="hero">
-        <div>
-          <p className="badge">Family first</p>
-          <h2>Memories plated, stories shared, traditions kept alive.</h2>
-          <p>
-            A hub for all things Wait Family—bringing together our favorite recipes, stories, and wisdom in one place.
-          </p>
-          <div className="hero-cta">
-            <Link className="primary-btn" to="/recipes">
-              Browse recipes
+    <div className="page home">
+      <section className="home-hero">
+        <p className="eyebrow">{greeting()}</p>
+        <h1>What&rsquo;s cooking in the Wait kitchen?</h1>
+        <form className="search-field search-field-lg" onSubmit={submitSearch} role="search">
+          <Icon name="search" size={22} />
+          <label htmlFor="home-search" className="visually-hidden">
+            Search recipes
+          </label>
+          <input
+            id="home-search"
+            type="search"
+            enterKeyHint="search"
+            placeholder="Find a family recipe"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </form>
+        <div className="chip-row">
+          {categories.map((cat) => (
+            <Link key={cat.value} to={`/recipes?category=${cat.value}`} className="chip">
+              {cat.label}
             </Link>
-            <Link className="ghost-btn" to="/family">
-              Learn about us
-            </Link>
-          </div>
+          ))}
+          <button type="button" className="chip chip-accent" onClick={surpriseMe} disabled={loading}>
+            <Icon name="shuffle" size={15} />
+            Surprise me
+          </button>
         </div>
-      </div>
+      </section>
 
-      <div className="grid" style={{ marginTop: '2.5rem' }}>
-        {displayStats.map((item) => (
-          <Link key={item.label} to={item.link} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <article className="stat-card" style={{ cursor: 'pointer' }}>
-              <p className="pill muted">{item.label}</p>
-              <p className="stat-value">{item.value}</p>
-              <p className="muted">{item.copy}</p>
-            </article>
+      <InstallTip />
+
+      <section className="shelf">
+        <div className="shelf-head">
+          <h2>Recently added</h2>
+          <Link to="/recipes" className="link-arrow">
+            All {recipes.length || ''} recipes <Icon name="right" size={16} />
           </Link>
-        ))}
-      </div>
-    </section>
+        </div>
+        <div className="shelf-scroll">
+          {loading
+            ? Array.from({ length: 4 }, (_, index) => <div key={index} className="recipe-card skeleton" />)
+            : recent.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
+        </div>
+      </section>
+
+      {favorites.length ? (
+        <section className="shelf">
+          <div className="shelf-head">
+            <h2>Family favorites</h2>
+            <p className="shelf-note">Most made</p>
+          </div>
+          <div className="shelf-scroll">
+            {favorites.map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="home-links">
+        <Link to="/recipes/add" className="home-link">
+          <Icon name="plus" size={26} />
+          <span>
+            <strong>Share a recipe</strong>
+            <span>Add a family favorite to the cookbook</span>
+          </span>
+        </Link>
+        <Link to="/family" className="home-link">
+          <Icon name="users" size={26} />
+          <span>
+            <strong>Family stories</strong>
+            <span>Videos, articles, and little moments</span>
+          </span>
+        </Link>
+        <Link to="/blog" className="home-link">
+          <Icon name="feather" size={26} />
+          <span>
+            <strong>The Wait Room blog</strong>
+            <span>Regina&rsquo;s posts since 2008</span>
+          </span>
+        </Link>
+      </section>
+    </div>
   );
 }
